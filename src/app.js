@@ -8,11 +8,10 @@ const bookmarksRouter = require('./bookmark/bookmark-router');
 const logger = require('./logger');
 const { API_TOKEN } = require('./config');
 
-const app = express();
+const app = express(); 
 
 app.use(morgan((NODE_ENV === 'production') ? 'tiny' : 'common', {
-  skip: () => NODE_ENV === 'test'
-}));
+  skip: () => NODE_ENV === 'test'}));
 app.use(helmet());
 app.use(cors());
 
