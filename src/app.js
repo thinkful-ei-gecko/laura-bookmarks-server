@@ -7,7 +7,6 @@ const { NODE_ENV } = require('./config.js');
 const bookmarksRouter = require('./bookmarks/bookmarks-router.js');
 const logger = require('./logger');
 const { API_TOKEN } = require('./config.js');
-const BookmarksService = require('./bookmarks/bookmarks-service.js');
 
 const app = express(); 
 
@@ -15,6 +14,12 @@ app.use(morgan((NODE_ENV === 'production') ? 'tiny' : 'common', {
   skip: () => NODE_ENV === 'test'}));
 app.use(helmet());
 app.use(cors());
+
+app.get('/xss', (req, res) => {
+  res.cookie('secretToken', '1234567890');
+  res.sendFile(__dirname + '/xss-example.html');
+});
+
 
 app.use(function validateBearerToken(req, res, next) {
   const apiToken = API_TOKEN;
@@ -27,29 +32,10 @@ app.use(function validateBearerToken(req, res, next) {
   next();
 });
 
-//app.use('/api/bookmarks', bookmarksRouter);
+app.use( bookmarksRouter);
 
 app.get('/', (req, res) => {
   res.send('Hello! Welcome to bookmarks!');
-});
-
-app.get('/bookmarks', (req, res, next) => {
-  //const knexInstance = req.app.get('db');
-  BookmarksService.getAllBookmarks(req.app.get('db'))
-    .then(bookmarks => { res.json(bookmarks) })
-    .catch(next)  
-});
-
-app.get('/bookmarks/:bookmark_id', (req, res, next) => {
-  const knexInstance = req.app.get('db');
-  BookmarksService.getById(knexInstance, req.params.bookmark_id)
-    .then(bookmark => { 
-      if (!bookmark) {
-        return res.status(404).json({ error: {message: 'Bookmark does not exist'} })
-      }
-      res.json(bookmark) 
-    })
-    .catch(next)
 });
 
 app.use(function errorHandler(error, req, res, next) {

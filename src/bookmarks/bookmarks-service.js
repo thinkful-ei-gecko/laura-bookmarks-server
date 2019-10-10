@@ -2,7 +2,7 @@ const BookmarksService = {
   getAllBookmarks(knex) {
     return knex('bookmarks').select('*');
   },
-  insertbookmark(knex, newbookmark) {
+  insertBookmark(knex, newbookmark) {
     return knex('bookmarks')
     .insert(newbookmark)
     .returning('*')
@@ -11,11 +11,11 @@ const BookmarksService = {
   getById(knex, id) {
     return knex('bookmarks').select('*').where('id', id).first();
   },
-  deletebookmark(knex, id) {
+  deleteBookmark(knex, id) {
     return knex('bookmarks').where({ id }).delete();
   },
-  updatebookmark(knex, id, newbookmarkFields) {
-    return knex('bookmarks').where({ id }).update(newbookmarkFields);
+  updateBookmark(knex, id, newBookmarkFields) {
+    return knex('bookmarks').where({ id }).update(newBookmarkFields);
   },
 };
 
