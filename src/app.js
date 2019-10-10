@@ -3,10 +3,11 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const helmet = require('helmet');
-const { NODE_ENV } = require('./config');
-const bookmarksRouter = require('./bookmark/bookmark-router');
+const { NODE_ENV } = require('./config.js');
+const bookmarksRouter = require('./bookmarks/bookmarks-router.js');
 const logger = require('./logger');
-const { API_TOKEN } = require('./config');
+const { API_TOKEN } = require('./config.js');
+const BookmarksService = require('./bookmarks/bookmarks-service.js');
 
 const app = express(); 
 
@@ -26,10 +27,29 @@ app.use(function validateBearerToken(req, res, next) {
   next();
 });
 
-app.use('/api/bookmarks', bookmarksRouter);
+//app.use('/api/bookmarks', bookmarksRouter);
 
 app.get('/', (req, res) => {
   res.send('Hello! Welcome to bookmarks!');
+});
+
+app.get('/bookmarks', (req, res, next) => {
+  //const knexInstance = req.app.get('db');
+  BookmarksService.getAllBookmarks(req.app.get('db'))
+    .then(bookmarks => { res.json(bookmarks) })
+    .catch(next)  
+});
+
+app.get('/bookmarks/:bookmark_id', (req, res, next) => {
+  const knexInstance = req.app.get('db');
+  BookmarksService.getById(knexInstance, req.params.bookmark_id)
+    .then(bookmark => { 
+      if (!bookmark) {
+        return res.status(404).json({ error: {message: 'Bookmark does not exist'} })
+      }
+      res.json(bookmark) 
+    })
+    .catch(next)
 });
 
 app.use(function errorHandler(error, req, res, next) {
