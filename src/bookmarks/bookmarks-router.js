@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 //const uuid = require('uuid/v4');
 const { isWebUri } = require('valid-url');
 //const logger = require('../logger');
@@ -18,7 +19,7 @@ const serializeBookmark = bookmark => ({
 });
 
 bookmarksRouter
-  .route('/bookmarks')
+  .route('/')
   .get((req, res, next) => {
     BookmarksService.getAllBookmarks(req.app.get('db'))
     .then(bookmarks => { 
@@ -30,44 +31,35 @@ bookmarksRouter
     const { title, url, description, rating } = req.body;
     const newBookmark = { title, url, description, rating };
     const requiredFields = { title, url, rating };
-    
+
     for (const [key, value] of Object.entries(requiredFields)) {
       if (value == null) {
-        return res.status(400).json({
-          error: { message: `Missing '${key}' in request body` }
-        });
+        return res.status(400).json({ error: { message: `Missing '${key}' in request body` } });
       }
     }
     if (!isWebUri(url)) {
-      return res.status(400).send(`'url' must be a valid URL with http...`);
-    } //FUTURE: WRITE A TEST FOR THIS PIECE
+      return res.status(400).json({ error: { message: `URL must have valid format` } });
+    } //FUTURE: WRITE A TEST FOR THIS PIECE***************************
 
     BookmarksService.insertBookmark( req.app.get('db'), newBookmark )
       .then(bookmark => {
         res.status(201)
-         .location(`/bookmarks/${bookmark.id}`)  
+         .location(path.posix.join(req.originalUrl +`/${bookmark.id}`))  
          .json(serializeBookmark(bookmark))
       })
       .catch(next)
-    });
+    })
 
-/*    for (const field of ['title', 'url', 'rating']) {
+  /*    for (const field of ['title', 'url', 'rating']) {
       if (!req.body[field]) {
         logger.error(`${field} is required`);
         return res.status(400).send(`'${field}' is required`);
       }
     }
-    const { title, url, description, rating } = req.body;
-
     if (!Number.isInteger(rating) || rating < 0 || rating > 5) {
       logger.error(`Invalid rating '${rating}' supplied`);
       return res.status(400).send(`'rating' must be a number between 0 and 5`);
     }
-    if (!isWebUri(url)) {
-      logger.error(`Invalid url '${url}' supplied`);
-      return res.status(400).send(`'url' must be a valid URL with http...`);
-    }
-
     const bookmark = { id: uuid(), title, url, description, rating };
     store.push(bookmark);
     logger.info(`Bookmark with id ${bookmark.id} created`);
@@ -75,12 +67,12 @@ bookmarksRouter
   */
 
 bookmarksRouter
-  .route('/bookmarks/:bookmark_id')
+  .route('/:bookmark_id')
   .all((req, res, next) => {
     BookmarksService.getById( req.app.get('db'), req.params.bookmark_id )
       .then(bookmark => {
         if (!bookmark) {
-          return res.status(404).json({ error: { message: `Bookmark doesn't exist` } })
+          return res.status(404).json({ error: { message: `Bookmark does not exist` } })
         }
         res.bookmark = bookmark // save the bookmark for the next middleware
         next() // don't forget to call next so the next middleware happens!
@@ -88,22 +80,36 @@ bookmarksRouter
       .catch(next)
   })
   .get((req, res, next) => {
-        res.json({
-          id: bookmark.id,
-          url: bookmark.url,
-          title: xss(bookmark.title), // sanitize title
-          description: xss(bookmark.description), // sanitize content
-          rating: bookmark.rating
+        return res.json({
+          id: res.bookmark.id,
+          url: res.bookmark.url,
+          title: xss(res.bookmark.title), // sanitize title
+          description: xss(res.bookmark.description), // sanitize content
+          rating: res.bookmark.rating
         }) 
   })
   .delete((req, res, next) => {
-    BookmarksService.deleteBookmark(
-      req.app.get('db'), req.params.bookmark_id
-    )
+    BookmarksService.deleteBookmark( req.app.get('db'), req.params.bookmark_id )
     .then(() => { res.status(204).end() })
     .catch(next)
   })
+  .patch(jsonParser, (req, res, next) => {
+    const { title, url, description, rating } = req.body;
+    const bookmarkToUpdate = { title, url, description, rating };
+    const numberOfValues = Object.values(bookmarkToUpdate).filter(Boolean).length;
+    if (numberOfValues === 0) {
+      return res.status(400).json({ error: {
+          message: `Request body must contain 'title', 'url', 'description' or 'rating'`
+        }
+      })
+    }
 
+    BookmarksService.updateBookmark( req.app.get('db'), 
+                                     req.params.bookmark_id,
+                                     bookmarkToUpdate)
+      .then(numRowsAffected => { res.status(204).end() })
+      .catch(next)
+  })
 
 /*    const { bookmark_id } = req.params;
     const bookmark = store.find(c => c.id == bookmark_id);
